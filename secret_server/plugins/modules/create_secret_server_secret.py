@@ -5,20 +5,19 @@ __metaclass__ = type
 
 DOCUMENTATION = r'''
 ---
-module: create_windows_secret_server_secret
+module: create_secret_server_secret
 
-short_description: Creates a secret in Delinea's Secret Server
+short_description: Create a secret in Delinea's Secret Server
 
-# If this is part of a collection, you need to use semantic versioning,
-# i.e. the version is of the form "2.5.0" and not "2.4".
 version_added: "1.0.0"
 
-description: Create a secret in Delinea's Secret Server using the Secret Server's API as a backend. Returns a 'secret' variable that
-contains the secret's username and password.
+description: |
+    Create a secret in Delinea's Secret Server using the Secret Server's API as a backend. Returns a 'secret' variable that
+    contains the secret's username and password.
 
 options:
     secret_server_host:
-        description: The hostname of your Secret Server instance. e.g. 'https://example.secretservercloud.com'
+        description: The hostname of your Secret Server instance
         required: true
         type: str
     secret_server_username_domain:
@@ -65,10 +64,6 @@ options:
         description: Flag to enable overwriting of an existing secret
         required: False
         type: bool
-# Specify this value according to your collection
-# in format of namespace.collection.doc_fragment_name
-extends_documentation_fragment:
-    - zachary_plencner.secret_server.create_secret_server_secret
 
 author:
     - Zachary Plencner (@zachary-plencner)
@@ -117,9 +112,9 @@ secret:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-import json
 import requests
 import copy
+
 
 class LogOn:
     def __init__(self, secret_server_host, secret_server_username, secret_server_password):
@@ -132,7 +127,7 @@ class LogOn:
         self.secret_server_grant_type = 'password'
 
         # Create dictionarie with login data
-        self.secret_server_logon_data =  {
+        self.secret_server_logon_data = {
                                         'username': secret_server_username,
                                         'password': secret_server_password,
                                         'grant_type': self.secret_server_grant_type
@@ -157,6 +152,7 @@ class LogOn:
                                     'Authorization': "Bearer " + secret_server_token
                                 }
 
+
 def get(secret_server_host, secret_server_username, secret_server_password, endpoint):
     secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
@@ -164,6 +160,7 @@ def get(secret_server_host, secret_server_username, secret_server_password, endp
     r = requests.get(
         secret_server_endpoint, headers=secret_server_logon.secret_server_headers, cookies=secret_server_logon.secret_server_jar)
     return r.json()
+
 
 def post(secret_server_host, secret_server_username, secret_server_password, endpoint, payload):
     secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
@@ -173,6 +170,7 @@ def post(secret_server_host, secret_server_username, secret_server_password, end
         secret_server_endpoint, headers=secret_server_logon.secret_server_headers, cookies=secret_server_logon.secret_server_jar, json=payload)
     return r.json()
 
+
 def put(secret_server_host, secret_server_username, secret_server_password, endpoint, payload):
     secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
@@ -180,6 +178,7 @@ def put(secret_server_host, secret_server_username, secret_server_password, endp
     r = requests.put(
         secret_server_endpoint, headers=secret_server_logon.secret_server_headers, cookies=secret_server_logon.secret_server_jar, json=payload)
     return r.json()
+
 
 def get_secret(secret_server_host, secret_server_username, secret_server_password, search_term):
     endpoint = '/secrets?filter.includeRestricted=true&filter.isExactMatch=true&filter.searchtext=' + search_term
@@ -192,6 +191,7 @@ def get_secret(secret_server_host, secret_server_username, secret_server_passwor
     secret = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
 
     return secret
+
 
 def get_folder_id(secret_server_host, secret_server_username, secret_server_password, folder_name):
     endpoint = '/folders?filter.searchtext=' + folder_name
@@ -209,19 +209,21 @@ def get_folder_id(secret_server_host, secret_server_username, secret_server_pass
         exit()
 
     return folder['records'][0]['id']
-        
+
+
 def get_template_id(secret_server_host, secret_server_username, secret_server_password, template_name):
     endpoint = '/templates'
     templates = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
     for template in templates:
         if template['name'] == template_name:
             templateID = template['id']
-    
+
     if not templateID:
         print("Template does not exist")
         exit()
 
     return templateID
+
 
 def get_template_name(secret_server_host, secret_server_username, secret_server_password, template_id):
     endpoint = '/templates'
@@ -232,7 +234,10 @@ def get_template_name(secret_server_host, secret_server_username, secret_server_
 
     return templateName
 
-def create_windows_secret(secret_server_host, secret_server_username, secret_server_password, secret_folder, secret_template, secret_name, secret_machine_name, secret_username, secret_password, secret_notes):
+
+def create_windows_secret(secret_server_host, secret_server_username, secret_server_password, secret_folder, secret_template, secret_name, secret_machine_name,
+                          secret_username, secret_password, secret_notes
+                          ):
     folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)
     template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)
 
@@ -261,7 +266,10 @@ def create_windows_secret(secret_server_host, secret_server_username, secret_ser
     secret = post(secret_server_host, secret_server_username, secret_server_password, endpoint, secret_stub)
     return secret
 
-def change_windows_secret(secret_server_host, secret_server_username, secret_server_password, existing_secret, secret_folder, secret_template, secret_name, secret_machine_name, secret_username, secret_password, secret_notes):
+
+def change_windows_secret(secret_server_host, secret_server_username, secret_server_password, existing_secret, secret_folder, secret_template, secret_name,
+                          secret_machine_name, secret_username, secret_password, secret_notes
+                          ):
     folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)
     template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)
 
@@ -287,6 +295,7 @@ def change_windows_secret(secret_server_host, secret_server_username, secret_ser
     else:
         return None
 
+
 def run_module():
     # define available arguments/parameters a user can pass to the module
     module_args = dict(
@@ -304,9 +313,9 @@ def run_module():
         secret_overwrite=dict(type='bool', required=False, default=False)
     )
 
-    supported_templates=['password',
-    'windows account'
-    ]
+    supported_templates = ['password',
+                           'windows account'
+                           ]
 
     # seed the result dict in the object
     result = dict(
@@ -335,40 +344,46 @@ def run_module():
 
     # if user specified a domain, append it to username
     if module.params['secret_server_username_domain']:
-        secret_server_username = "{}\\{}".format(module.params['secret_server_username_domain'],module.params['secret_server_username'])
+        secret_server_username = "{}\\{}".format(module.params['secret_server_username_domain'], module.params['secret_server_username'])
     # else username defaults to standalone
     else:
         secret_server_username = module.params['secret_server_username']
 
     existing_secret = get_secret(module.params['secret_server_host'],
-                secret_server_username,
-                module.params['secret_server_password'],
-                module.params['secret_name'])
+                                 secret_server_username,
+                                 module.params['secret_server_password'],
+                                 module.params['secret_name']
+                                 )
 
     if existing_secret and module.params['secret_overwrite']:
         if existing_secret['secretTemplateId'] != get_template_id(module.params['secret_server_host'],
-                secret_server_username,
-                module.params['secret_server_password'],
-                module.params['secret_template']):
+                                                                  secret_server_username,
+                                                                  module.params['secret_server_password'],
+                                                                  module.params['secret_template']
+                                                                  ):
             print('Cannot convert from \'{}\' template type to \'{}\' template type'.format(get_template_name(module.params['secret_server_host'],
-                secret_server_username,
-                module.params['secret_server_password'],
-                existing_secret['secretTemplateId']), module.params['secret_template']))
+                                                                                                              secret_server_username,
+                                                                                                              module.params['secret_server_password'],
+                                                                                                              existing_secret['secretTemplateId']
+                                                                                                              ),
+                                                                                            module.params['secret_template']
+                                                                                            )
+                  )
             exit()
         else:
             if module.params['secret_template'] == 'Windows Account':
                 module_result = change_windows_secret(module.params['secret_server_host'],
-                            secret_server_username,
-                            module.params['secret_server_password'],
-                            existing_secret,
-                            module.params['secret_folder'],
-                            module.params['secret_template'],
-                            module.params['secret_name'],
-                            module.params['secret_machine_name'],
-                            module.params['secret_username'],
-                            module.params['secret_password'],
-                            module.params['secret_notes']
-                            )
+                                                      secret_server_username,
+                                                      module.params['secret_server_password'],
+                                                      existing_secret,
+                                                      module.params['secret_folder'],
+                                                      module.params['secret_template'],
+                                                      module.params['secret_name'],
+                                                      module.params['secret_machine_name'],
+                                                      module.params['secret_username'],
+                                                      module.params['secret_password'],
+                                                      module.params['secret_notes']
+                                                      )
                 if not module_result:
                     result['changed'] = False
                     module_result = existing_secret
@@ -382,16 +397,16 @@ def run_module():
         result['changed'] = False
     else:
         module_result = create_windows_secret(module.params['secret_server_host'],
-                    secret_server_username,
-                    module.params['secret_server_password'],
-                    module.params['secret_folder'],
-                    module.params['secret_template'],
-                    module.params['secret_name'],
-                    module.params['secret_machine_name'],
-                    module.params['secret_username'],
-                    module.params['secret_password'],
-                    module.params['secret_notes']
-                    )
+                                              secret_server_username,
+                                              module.params['secret_server_password'],
+                                              module.params['secret_folder'],
+                                              module.params['secret_template'],
+                                              module.params['secret_name'],
+                                              module.params['secret_machine_name'],
+                                              module.params['secret_username'],
+                                              module.params['secret_password'],
+                                              module.params['secret_notes']
+                                              )
         result['changed'] = True
 
     if not module_result['items']:

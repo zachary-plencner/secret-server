@@ -9,16 +9,15 @@ module: get_secret_server_secret
 
 short_description: Retreives a secret from Delinea's Secret Server
 
-# If this is part of a collection, you need to use semantic versioning,
-# i.e. the version is of the form "2.5.0" and not "2.4".
 version_added: "1.0.0"
 
-description: Retreive a secret from Delinea's Secret Server using the Secret Server's API as a backend. Returns a 'secret' variable that
-contains the secret's username and password.
+description: |
+    Retreive a secret from Delinea's Secret Server using the Secret Server's API as a backend. Returns a 'secret' variable that
+    contains the secret's username and password.
 
 options:
     secret_server_host:
-        description: The hostname of your Secret Server instance. e.g. 'https://example.secretservercloud.com'
+        description: The hostname of your Secret Server instance
         required: true
         type: str
     secret_server_username_domain:
@@ -37,10 +36,6 @@ options:
         description: The name of the secret you want to retreive from Secret Server (must be verbatim/exact match)
         required: true
         type: str
-# Specify this value according to your collection
-# in format of namespace.collection.doc_fragment_name
-extends_documentation_fragment:
-    - zachary_plencner.secret_server.get_secret_server_secret
 
 author:
     - Zachary Plencner (@zachary-plencner)
@@ -77,8 +72,8 @@ secret:
 '''
 
 from ansible.module_utils.basic import AnsibleModule
-import sys
 import requests
+
 
 class LogOn:
     def __init__(self, secret_server_host, secret_server_username, secret_server_password):
@@ -91,7 +86,7 @@ class LogOn:
         self.secret_server_grant_type = 'password'
 
         # Create dictionarie with login data
-        self.secret_server_logon_data =  {
+        self.secret_server_logon_data = {
                                         'username': secret_server_username,
                                         'password': secret_server_password,
                                         'grant_type': self.secret_server_grant_type
@@ -116,6 +111,7 @@ class LogOn:
                                     'Authorization': "Bearer " + secret_server_token
                                 }
 
+
 def get(secret_server_host, secret_server_username, secret_server_password, endpoint):
     secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
@@ -123,6 +119,7 @@ def get(secret_server_host, secret_server_username, secret_server_password, endp
     r = requests.get(
         secret_server_endpoint, headers=secret_server_logon.secret_server_headers, cookies=secret_server_logon.secret_server_jar)
     return r.json()
+
 
 def get_secret(secret_server_host, secret_server_username, secret_server_password, search_term):
     endpoint = '/secrets?filter.includeRestricted=true&filter.isExactMatch=true&filter.searchtext=' + search_term
@@ -170,15 +167,16 @@ def run_module():
 
     # if user specified a domain, append it to username
     if module.params['secret_server_username_domain']:
-        secret_server_username = "{}\\{}".format(module.params['secret_server_username_domain'],module.params['secret_server_username'])
+        secret_server_username = "{}\\{}".format(module.params['secret_server_username_domain'], module.params['secret_server_username'])
     # else username defaults to standalone
     else:
         secret_server_username = module.params['secret_server_username']
 
     module_result = get_secret(module.params['secret_server_host'],
-                secret_server_username,
-                module.params['secret_server_password'],
-                module.params['secret_name'])
+                               secret_server_username,
+                               module.params['secret_server_password'],
+                               module.params['secret_name']
+                               )
 
     # use whatever logic you need to determine whether or not this module
     # made any modifications to your target
