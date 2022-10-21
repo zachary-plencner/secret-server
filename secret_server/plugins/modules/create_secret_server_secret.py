@@ -153,8 +153,7 @@ class LogOn:
                                 }
 
 
-def get(secret_server_host, secret_server_username, secret_server_password, endpoint):
-    secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
+def get(secret_server_logon, endpoint):
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
 
     r = requests.get(
@@ -162,8 +161,7 @@ def get(secret_server_host, secret_server_username, secret_server_password, endp
     return r.json()
 
 
-def post(secret_server_host, secret_server_username, secret_server_password, endpoint, payload):
-    secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
+def post(secret_server_logon, endpoint, payload):
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
 
     r = requests.post(
@@ -171,8 +169,7 @@ def post(secret_server_host, secret_server_username, secret_server_password, end
     return r.json()
 
 
-def put(secret_server_host, secret_server_username, secret_server_password, endpoint, payload):
-    secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
+def put(secret_server_logon, endpoint, payload):
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
 
     r = requests.put(
@@ -180,22 +177,22 @@ def put(secret_server_host, secret_server_username, secret_server_password, endp
     return r.json()
 
 
-def get_secret(secret_server_host, secret_server_username, secret_server_password, search_term):
+def get_secret(secret_server_logon, search_term):
     endpoint = '/secrets?filter.includeRestricted=true&filter.isExactMatch=true&filter.searchtext=' + search_term
-    secret = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    secret = get(secret_server_logon, endpoint)
     if not secret['records']:
         return None
 
     secret_id = secret['records'][0]['id']
     endpoint = '/secrets/' + str(secret_id)
-    secret = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    secret = get(secret_server_logon, endpoint)
 
     return secret
 
 
-def get_folder_id(secret_server_host, secret_server_username, secret_server_password, folder_name):
+def get_folder_id(secret_server_logon, folder_name):
     endpoint = '/folders?filter.searchtext=' + folder_name
-    folder = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    folder = get(secret_server_logon, endpoint)
     if not folder['records']:
         print("Folder does not exist")
         exit()
@@ -211,9 +208,9 @@ def get_folder_id(secret_server_host, secret_server_username, secret_server_pass
     return folder['records'][0]['id']
 
 
-def get_template_id(secret_server_host, secret_server_username, secret_server_password, template_name):
+def get_template_id(secret_server_logon, template_name):
     endpoint = '/templates'
-    templates = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    templates = get(secret_server_logon, endpoint)
     for template in templates:
         if template['name'] == template_name:
             templateID = template['id']
@@ -225,52 +222,53 @@ def get_template_id(secret_server_host, secret_server_username, secret_server_pa
     return templateID
 
 
-def get_template_name(secret_server_host, secret_server_username, secret_server_password, template_id):
+def get_template_name(secret_server_logon, template_id):
     endpoint = '/templates'
-    templates = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    templates = get(secret_server_logon, endpoint)
     for template in templates:
         if template['id'] == template_id:
             templateName = template['name']
 
     return templateName
 
-def create_password_secret(secret_server_host, secret_server_username, secret_server_password, secret_folder, secret_template, secret_name, secret_resource,
+
+def create_password_secret(secret_server_logon, secret_folder, secret_template, secret_name, secret_resource,
                            secret_username, secret_password, secret_notes
-                           ):	
-    folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)	
-    template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)	
-    endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)	
-    secret_stub = get(secret_server_host, secret_server_username, secret_server_password, endpoint)	
-    secret_stub['name'] = secret_name	
-    secret_stub['secretTemplateId'] = template_id	
-    secret_stub['AutoChangeEnabled'] = False	
-    secret_stub['autoChangeNextPassword'] = ""	
-    secret_stub['SiteId'] = 1	
-    secret_stub['folderId'] = folder_id	
-    secret_stub['active'] = True	
-    secret_stub['IsDoubleLock'] = False	
-    for item in secret_stub['items']:	
-        if item['fieldName'] == "Resource":	
-            item['itemValue'] = secret_resource	
-        if item['fieldName'] == "Username":	
-            item['itemValue'] = secret_username	
-        if item['fieldName'] == "Password":	
-            item['itemValue'] = secret_password	
-        if item['fieldName'] == "Notes":	
-            item['itemValue'] = secret_notes	
-    endpoint = '/secrets'	
-    secret = post(secret_server_host, secret_server_username, secret_server_password, endpoint, secret_stub)	
+                           ):
+    folder_id = get_folder_id(secret_server_logon, secret_folder)
+    template_id = get_template_id(secret_server_logon, secret_template)
+    endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)
+    secret_stub = get(secret_server_logon, endpoint)
+    secret_stub['name'] = secret_name
+    secret_stub['secretTemplateId'] = template_id
+    secret_stub['AutoChangeEnabled'] = False
+    secret_stub['autoChangeNextPassword'] = ""
+    secret_stub['SiteId'] = 1
+    secret_stub['folderId'] = folder_id
+    secret_stub['active'] = True
+    secret_stub['IsDoubleLock'] = False
+    for item in secret_stub['items']:
+        if item['fieldName'] == "Resource":
+            item['itemValue'] = secret_resource
+        if item['fieldName'] == "Username":
+            item['itemValue'] = secret_username
+        if item['fieldName'] == "Password":
+            item['itemValue'] = secret_password
+        if item['fieldName'] == "Notes":
+            item['itemValue'] = secret_notes
+    endpoint = '/secrets'
+    secret = post(secret_server_logon, endpoint, secret_stub)
     return secret
 
 
-def create_windows_secret(secret_server_host, secret_server_username, secret_server_password, secret_folder, secret_template, secret_name, secret_machine_name,
+def create_windows_secret(secret_server_logon, secret_folder, secret_template, secret_name, secret_machine_name,
                           secret_username, secret_password, secret_notes
                           ):
-    folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)
-    template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)
+    folder_id = get_folder_id(secret_server_logon, secret_folder)
+    template_id = get_template_id(secret_server_logon, secret_template)
 
     endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)
-    secret_stub = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    secret_stub = get(secret_server_logon, endpoint)
 
     secret_stub['name'] = secret_name
     secret_stub['secretTemplateId'] = template_id
@@ -291,15 +289,15 @@ def create_windows_secret(secret_server_host, secret_server_username, secret_ser
             item['itemValue'] = secret_notes
 
     endpoint = '/secrets'
-    secret = post(secret_server_host, secret_server_username, secret_server_password, endpoint, secret_stub)
+    secret = post(secret_server_logon, endpoint, secret_stub)
     return secret
 
 
-def change_windows_secret(secret_server_host, secret_server_username, secret_server_password, existing_secret, secret_folder, secret_template, secret_name,
+def change_windows_secret(secret_server_logon, existing_secret, secret_folder, secret_template, secret_name,
                           secret_machine_name, secret_username, secret_password, secret_notes
                           ):
-    folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)
-    template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)
+    folder_id = get_folder_id(secret_server_logon, secret_folder)
+    template_id = get_template_id(secret_server_logon, secret_template)
 
     endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)
     secret_stub = copy.deepcopy(existing_secret)
@@ -318,37 +316,38 @@ def change_windows_secret(secret_server_host, secret_server_username, secret_ser
             item['itemValue'] = secret_notes
     if secret_stub != existing_secret:
         endpoint = '/secrets/' + str(existing_secret['id'])
-        secret = put(secret_server_host, secret_server_username, secret_server_password, endpoint, secret_stub)
+        secret = put(secret_server_logon, endpoint, secret_stub)
         return secret
     else:
         return None
 
 
-def change_password_secret(secret_server_host, secret_server_username, secret_server_password, existing_secret, secret_folder, secret_template, secret_name,
+def change_password_secret(secret_server_logon, existing_secret, secret_folder, secret_template, secret_name,
                            secret_resource, secret_username, secret_password, secret_notes
                            ):
-    folder_id = get_folder_id(secret_server_host, secret_server_username, secret_server_password, secret_folder)	
-    template_id = get_template_id(secret_server_host, secret_server_username, secret_server_password, secret_template)	
-    endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)	
-    secret_stub = copy.deepcopy(existing_secret)	
-    secret_stub['name'] = secret_name	
-    secret_stub['secretTemplateId'] = template_id	
-    secret_stub['folderId'] = folder_id	
-    for item in secret_stub['items']:	
-        if item['fieldName'] == "Resource":	
-            item['itemValue'] = secret_resource	
-        if item['fieldName'] == "Username":	
-            item['itemValue'] = secret_username	
-        if item['fieldName'] == "Password":	
-            item['itemValue'] = secret_password	
-        if item['fieldName'] == "Notes":	
-            item['itemValue'] = secret_notes	
-    if secret_stub != existing_secret:	
-        endpoint = '/secrets/' + str(existing_secret['id'])	
-        secret = put(secret_server_host, secret_server_username, secret_server_password, endpoint, secret_stub)	
-        return secret	
-    else:	
+    folder_id = get_folder_id(secret_server_logon, secret_folder)
+    template_id = get_template_id(secret_server_logon, secret_template)
+    endpoint = '/secrets/stub?filter.secrettemplateid=' + str(template_id)
+    secret_stub = copy.deepcopy(existing_secret)
+    secret_stub['name'] = secret_name
+    secret_stub['secretTemplateId'] = template_id
+    secret_stub['folderId'] = folder_id
+    for item in secret_stub['items']:
+        if item['fieldName'] == "Resource":
+            item['itemValue'] = secret_resource
+        if item['fieldName'] == "Username":
+            item['itemValue'] = secret_username
+        if item['fieldName'] == "Password":
+            item['itemValue'] = secret_password
+        if item['fieldName'] == "Notes":
+            item['itemValue'] = secret_notes
+    if secret_stub != existing_secret:
+        endpoint = '/secrets/' + str(existing_secret['id'])
+        secret = put(secret_server_logon, endpoint, secret_stub)
+        return secret
+    else:
         return None
+
 
 def run_module():
     # define available arguments/parameters a user can pass to the module
@@ -360,16 +359,13 @@ def run_module():
         secret_folder=dict(type='str', required=True),
         secret_template=dict(type='str', required=True),
         secret_name=dict(type='str', required=True),
-        secret_machine_name=dict(type='str', required=True),
+        secret_machine_name=dict(type='str', required=False),
+        secret_resource=dict(type='str', required=False),
         secret_username=dict(type='str', required=True),
         secret_password=dict(type='str', no_log=False, required=True),
         secret_notes=dict(type='str', required=False),
         secret_overwrite=dict(type='bool', required=False, default=False)
     )
-
-    supported_templates = ['password',
-                           'windows account'
-                           ]
 
     # seed the result dict in the object
     result = dict(
@@ -385,6 +381,17 @@ def run_module():
         argument_spec=module_args,
         supports_check_mode=True
     )
+
+    supported_templates = ['password',
+                           'windows account'
+                           ]
+
+    # Error checking for parameter dependencies
+    match str(module.params['secret_template']).lower():
+        case 'windows account':
+            if not module.params['secret_machine_name']:
+                print('missing required arguments: secret_machine_name')
+                exit()
 
     # if the user is working with this module in only check mode we do not
     # want to make any changes to the environment, just return the current
@@ -403,21 +410,20 @@ def run_module():
     else:
         secret_server_username = module.params['secret_server_username']
 
-    existing_secret = get_secret(module.params['secret_server_host'],
-                                 secret_server_username,
-                                 module.params['secret_server_password'],
+    secret_server_logon = LogOn(module.params['secret_server_host'],
+                                secret_server_username,
+                                module.params['secret_server_password']
+                                )
+
+    existing_secret = get_secret(secret_server_logon,
                                  module.params['secret_name']
                                  )
 
     if existing_secret and module.params['secret_overwrite']:
-        if existing_secret['secretTemplateId'] != get_template_id(module.params['secret_server_host'],
-                                                                  secret_server_username,
-                                                                  module.params['secret_server_password'],
+        if existing_secret['secretTemplateId'] != get_template_id(secret_server_logon,
                                                                   module.params['secret_template']
                                                                   ):
-            print('Cannot convert from \'{}\' template type to \'{}\' template type'.format(get_template_name(module.params['secret_server_host'],
-                                                                                                              secret_server_username,
-                                                                                                              module.params['secret_server_password'],
+            print('Cannot convert from \'{}\' template type to \'{}\' template type'.format(get_template_name(secret_server_logon,
                                                                                                               existing_secret['secretTemplateId']
                                                                                                               ),
                                                                                             module.params['secret_template']
@@ -425,77 +431,69 @@ def run_module():
                   )
             exit()
         else:
-            match str(module.params['secret_template']).lower():	
-                case 'windows account':	
-                    module_result = change_windows_secret(module.params['secret_server_host'],	
-                                                          secret_server_username,	
-                                                          module.params['secret_server_password'],	
-                                                          existing_secret,	
-                                                          module.params['secret_folder'],	
-                                                          module.params['secret_template'],	
-                                                          module.params['secret_name'],	
-                                                          module.params['secret_machine_name'],	
-                                                          module.params['secret_username'],	
-                                                          module.params['secret_password'],	
-                                                          module.params['secret_notes']	
-                                                          )	
-                    if not module_result:	
-                        result['changed'] = False	
-                        module_result = existing_secret	
-                    else:	
-                        result['changed'] = True	
-                case 'password':	
-                    module_result = change_password_secret(module.params['secret_server_host'],	
-                                                           secret_server_username,	
-                                                           module.params['secret_server_password'],	
-                                                           existing_secret,	
-                                                           module.params['secret_folder'],	
-                                                           module.params['secret_template'],	
-                                                           module.params['secret_name'],	
-                                                           module.params['secret_resource'],	
-                                                           module.params['secret_username'],	
-                                                           module.params['secret_password'],	
-                                                           module.params['secret_notes']	
-                                                           )	
-                    if not module_result:	
-                        result['changed'] = False	
-                        module_result = existing_secret	
-                    else:	
-                        result['changed'] = True	
-                case _:	
-                    print('Unsupported password change')	
+            match str(module.params['secret_template']).lower():
+                case 'windows account':
+                    module_result = change_windows_secret(secret_server_logon,
+                                                          existing_secret,
+                                                          module.params['secret_folder'],
+                                                          module.params['secret_template'],
+                                                          module.params['secret_name'],
+                                                          module.params['secret_machine_name'],
+                                                          module.params['secret_username'],
+                                                          module.params['secret_password'],
+                                                          module.params['secret_notes']
+                                                          )
+                    if not module_result:
+                        result['changed'] = False
+                        module_result = existing_secret
+                    else:
+                        result['changed'] = True
+                case 'password':
+                    module_result = change_password_secret(secret_server_logon,
+                                                           existing_secret,
+                                                           module.params['secret_folder'],
+                                                           module.params['secret_template'],
+                                                           module.params['secret_name'],
+                                                           module.params['secret_resource'],
+                                                           module.params['secret_username'],
+                                                           module.params['secret_password'],
+                                                           module.params['secret_notes']
+                                                           )
+                    if not module_result:
+                        result['changed'] = False
+                        module_result = existing_secret
+                    else:
+                        result['changed'] = True
+                case _:
+                    print('Unsupported password change')
                     exit()
     elif existing_secret and not module.params['secret_overwrite']:
         module_result = existing_secret
         result['changed'] = False
     else:
-        if module.params['secret_template'] == "Windows Account":	
-            if not module.params['secret_machine_name']:	
-                print("secret_machine_name not provided")	
-                exit()	
-            module_result = create_windows_secret(module.params['secret_server_host'],	
-                                                  secret_server_username,	
-                                                  module.params['secret_server_password'],	
-                                                  module.params['secret_folder'],	
-                                                  module.params['secret_template'],	
-                                                  module.params['secret_name'],	
-                                                  module.params['secret_machine_name'],	
-                                                  module.params['secret_username'],	
-                                                  module.params['secret_password'],	
-                                                  module.params['secret_notes']	
-                                                  )	
-        if (module.params['secret_template']).lower() == "password":	
-             module_result = create_password_secret(module.params['secret_server_host'],	
-                                                    secret_server_username,	
-                                                    module.params['secret_server_password'],	
-                                                    module.params['secret_folder'],	
-                                                    module.params['secret_template'],	
-                                                    module.params['secret_name'],	
-                                                    module.params['secret_resource'],	
-                                                    module.params['secret_username'],	
-                                                    module.params['secret_password'],	
-                                                    module.params['secret_notes']	
-                                                    )
+        if module.params['secret_template'] == "Windows Account":
+            if not module.params['secret_machine_name']:
+                print("secret_machine_name not provided")
+                exit()
+            module_result = create_windows_secret(secret_server_logon,
+                                                  module.params['secret_folder'],
+                                                  module.params['secret_template'],
+                                                  module.params['secret_name'],
+                                                  module.params['secret_machine_name'],
+                                                  module.params['secret_username'],
+                                                  module.params['secret_password'],
+                                                  module.params['secret_notes']
+                                                  )
+        if (module.params['secret_template']).lower() == "password":
+            module_result = create_password_secret(secret_server_logon,
+                                                   module.params['secret_folder'],
+                                                   module.params['secret_template'],
+                                                   module.params['secret_name'],
+                                                   module.params['secret_resource'],
+                                                   module.params['secret_username'],
+                                                   module.params['secret_password'],
+                                                   module.params['secret_notes']
+                                                   )
         result['changed'] = True
 
     if not module_result['items']:

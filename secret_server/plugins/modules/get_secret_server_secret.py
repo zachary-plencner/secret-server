@@ -112,8 +112,7 @@ class LogOn:
                                 }
 
 
-def get(secret_server_host, secret_server_username, secret_server_password, endpoint):
-    secret_server_logon = LogOn(secret_server_host, secret_server_username, secret_server_password)
+def get(secret_server_logon, endpoint):
     secret_server_endpoint = secret_server_logon.secret_server_base_url + endpoint
 
     r = requests.get(
@@ -121,15 +120,15 @@ def get(secret_server_host, secret_server_username, secret_server_password, endp
     return r.json()
 
 
-def get_secret(secret_server_host, secret_server_username, secret_server_password, search_term):
+def get_secret(secret_server_logon, search_term):
     endpoint = '/secrets?filter.includeRestricted=true&filter.isExactMatch=true&filter.searchtext=' + search_term
-    secret = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    secret = get(secret_server_logon, endpoint)
     if not secret['records']:
         return None
 
     secret_id = secret['records'][0]['id']
     endpoint = '/secrets/' + str(secret_id)
-    secret = get(secret_server_host, secret_server_username, secret_server_password, endpoint)
+    secret = get(secret_server_logon, endpoint)
 
     return secret
 
@@ -172,9 +171,12 @@ def run_module():
     else:
         secret_server_username = module.params['secret_server_username']
 
-    module_result = get_secret(module.params['secret_server_host'],
-                               secret_server_username,
-                               module.params['secret_server_password'],
+    secret_server_logon = LogOn(module.params['secret_server_host'],
+                                secret_server_username,
+                                module.params['secret_server_password']
+                                )
+
+    module_result = get_secret(secret_server_logon,
                                module.params['secret_name']
                                )
 
