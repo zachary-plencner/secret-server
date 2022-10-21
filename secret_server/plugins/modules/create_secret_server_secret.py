@@ -114,6 +114,10 @@ secret:
 from ansible.module_utils.basic import AnsibleModule
 import requests
 import copy
+import string
+import secrets
+
+alphabet = string.ascii_letters + string.digits + '!' + '@' + '#' + '$' + '%' + '^' + '&' + '*' + '(' + ')'
 
 
 class LogOn:
@@ -362,7 +366,8 @@ def run_module():
         secret_machine_name=dict(type='str', required=False),
         secret_resource=dict(type='str', required=False),
         secret_username=dict(type='str', required=True),
-        secret_password=dict(type='str', no_log=False, required=True),
+        secret_password=dict(type='str', no_log=False, required=False),
+        use_random_password=dict(type='bool', no_log=False, required=False, default=False),
         secret_notes=dict(type='str', required=False),
         secret_overwrite=dict(type='bool', required=False, default=False)
     )
@@ -385,6 +390,17 @@ def run_module():
     supported_templates = ['password',
                            'windows account'
                            ]
+
+    if module.params['use_random_password'] and module.params['secret_password']:
+        print('use_random_password and secret_password arguments are mutually exclusive')
+        exit()
+    if module.params['use_random_password']:
+        secret_password = ''.join(secrets.choice(alphabet) for i in range(15))
+    elif module.params['secret_password']:
+        secret_password = module.params['secret_password']
+    else:
+        print('missing required arguments: secret_password')
+        exit()
 
     # Error checking for parameter dependencies
     match str(module.params['secret_template']).lower():
@@ -440,7 +456,7 @@ def run_module():
                                                           module.params['secret_name'],
                                                           module.params['secret_machine_name'],
                                                           module.params['secret_username'],
-                                                          module.params['secret_password'],
+                                                          secret_password,
                                                           module.params['secret_notes']
                                                           )
                     if not module_result:
@@ -456,7 +472,7 @@ def run_module():
                                                            module.params['secret_name'],
                                                            module.params['secret_resource'],
                                                            module.params['secret_username'],
-                                                           module.params['secret_password'],
+                                                           secret_password,
                                                            module.params['secret_notes']
                                                            )
                     if not module_result:
@@ -481,7 +497,7 @@ def run_module():
                                                   module.params['secret_name'],
                                                   module.params['secret_machine_name'],
                                                   module.params['secret_username'],
-                                                  module.params['secret_password'],
+                                                  secret_password,
                                                   module.params['secret_notes']
                                                   )
         if (module.params['secret_template']).lower() == "password":
@@ -491,7 +507,7 @@ def run_module():
                                                    module.params['secret_name'],
                                                    module.params['secret_resource'],
                                                    module.params['secret_username'],
-                                                   module.params['secret_password'],
+                                                   secret_password,
                                                    module.params['secret_notes']
                                                    )
         result['changed'] = True
