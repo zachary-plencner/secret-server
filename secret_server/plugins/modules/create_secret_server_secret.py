@@ -395,7 +395,13 @@ def run_module():
         print('use_random_password and secret_password arguments are mutually exclusive')
         exit()
     if module.params['use_random_password']:
-        secret_password = ''.join(secrets.choice(alphabet) for i in range(15))
+        while True:
+            secret_password = ''.join(secrets.choice(alphabet) for i in range(15))
+            if (any(c.islower() for c in secret_password)
+                and any(c.isupper() for c in secret_password)
+                and sum(c.isdigit() for c in secret_password) >= 3
+                and any(not c.isalnum() for c in secret_password)):
+                break
     elif module.params['secret_password']:
         secret_password = module.params['secret_password']
     else:
