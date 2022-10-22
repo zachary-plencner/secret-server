@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 from __future__ import (absolute_import, division, print_function)
+from logging import raiseExceptions
 __metaclass__ = type
 
 DOCUMENTATION = r'''
@@ -114,11 +115,8 @@ secret:
 from ansible.module_utils.basic import AnsibleModule
 import requests
 import copy
-import string
-import secrets
-
-alphabet = string.ascii_letters + string.digits + '!' + '@' + '#' + '$' + '%' + '^' + '&' + '*' + '(' + ')'
-
+import random
+from passlib.hash import sha512_crypt
 
 class LogOn:
     def __init__(self, secret_server_host, secret_server_username, secret_server_password):
@@ -141,8 +139,7 @@ class LogOn:
         secret_server_r = requests.post(self.secret_server_logon_uri, data=self.secret_server_logon_data)
 
         if secret_server_r.status_code != 200:
-            print("Login failed")
-            exit()
+            raise Exception("Login failed")
 
         self.secret_server_jar = secret_server_r.cookies
 
@@ -198,16 +195,14 @@ def get_folder_id(secret_server_logon, folder_name):
     endpoint = '/folders?filter.searchtext=' + folder_name
     folder = get(secret_server_logon, endpoint)
     if not folder['records']:
-        print("Folder does not exist")
-        exit()
+        raise Exception(msg="Folder does not exist")
     folder_exists = 0
     for record in folder['records']:
         if folder_name == record['folderName']:
             folder_exists = 1
             break
     if not folder_exists:
-        print("Folder does not exist")
-        exit()
+        raise Exception(msg="Folder does not exist")
 
     return folder['records'][0]['id']
 
@@ -220,8 +215,7 @@ def get_template_id(secret_server_logon, template_name):
             templateID = template['id']
 
     if not templateID:
-        print("Template does not exist")
-        exit()
+        raise Exception(msg="Template does not exist")
 
     return templateID
 
@@ -352,7 +346,6 @@ def change_password_secret(secret_server_logon, existing_secret, secret_folder, 
     else:
         return None
 
-
 def run_module():
     # define available arguments/parameters a user can pass to the module
     module_args = dict(
@@ -368,8 +361,15 @@ def run_module():
         secret_username=dict(type='str', required=True),
         secret_password=dict(type='str', no_log=False, required=False),
         use_random_password=dict(type='bool', no_log=False, required=False, default=False),
+        random_password_length=dict(type='int', no_log=False, required=False),
+        random_password_alphabet=dict(type='str', no_log=False, required=False),
+        random_password_lowercase_requirement=dict(type='int', no_log=False, required=False),
+        random_password_uppercase_requirement=dict(type='int', no_log=False, required=False),
+        random_password_digit_requirement=dict(type='int', no_log=False, required=False),
+        random_password_special_requirement=dict(type='int', no_log=False, required=False),
         secret_notes=dict(type='str', required=False),
-        secret_overwrite=dict(type='bool', required=False, default=False)
+        secret_overwrite=dict(type='bool', required=False, default=False),
+        sha512_encrypt_password=dict(type='bool', required=False, default=False)
     )
 
     # seed the result dict in the object
@@ -392,28 +392,69 @@ def run_module():
                            ]
 
     if module.params['use_random_password'] and module.params['secret_password']:
-        print('use_random_password and secret_password arguments are mutually exclusive')
-        exit()
+        module.fail_json(msg='use_random_password and secret_password arguments are mutually exclusive')
     if module.params['use_random_password']:
-        while True:
-            secret_password = ''.join(secrets.choice(alphabet) for i in range(15))
-            if (any(c.islower() for c in secret_password)
-                and any(c.isupper() for c in secret_password)
-                and sum(c.isdigit() for c in secret_password) >= 3
-                and any(not c.isalnum() for c in secret_password)):
-                break
+        random_password_length =  module.params['random_password_length'] if module.params['random_password_length'] else 8
+        random_password_alphabet = module.params['random_password_alphabet'] if module.params['random_password_alphabet'] else 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()'
+        random_password_lowercase_requirement = module.params['random_password_lowercase_requirement'] if module.params['random_password_lowercase_requirement'] else 0
+        random_password_uppercase_requirement = module.params['random_password_uppercase_requirement'] if module.params['random_password_uppercase_requirement'] else 0
+        random_password_digit_requirement = module.params['random_password_digit_requirement'] if module.params['random_password_digit_requirement'] else 0
+        random_password_special_requirement = module.params['random_password_special_requirement'] if module.params['random_password_special_requirement'] else 0
+        random_password_requirements_sum = random_password_lowercase_requirement + random_password_uppercase_requirement + random_password_digit_requirement + random_password_special_requirement
+
+        if random_password_length < random_password_requirements_sum:
+            module.fail_json(msg='random_password_length: {}, cannot be less than random_password_<char_type>_requirements sum: {}'.format(random_password_length,random_password_requirements_sum))
+        if random_password_uppercase_requirement and not any(c.isupper() for c in random_password_alphabet):
+            module.fail_json(msg='random_password_uppercase_requirement is >0 but random_password_alphabet does not contain any uppercase characters')
+        if random_password_lowercase_requirement and not any(c.islower() for c in random_password_alphabet):
+            module.fail_json(msg='random_password_lowercase_requirement is >0 but random_password_alphabet does not contain any lowercase characters')
+        if random_password_digit_requirement and not any(c.isdigit() for c in random_password_alphabet):
+            module.fail_json(msg='random_password_digit_requirement is >0 but random_password_alphabet does not contain any digit characters')
+        if random_password_special_requirement and not any(not c.isalnum() for c in random_password_alphabet):
+            module.fail_json(msg='random_password_special_requirement is >0 but random_password_alphabet does not contain any special characters')
+        random_password_alphabet_uppercase = ''
+        random_password_alphabet_lowercase = ''
+        random_password_alphabet_digit = ''
+        random_password_alphabet_special = ''
+        for c in random_password_alphabet: 
+            if c.isupper():
+                random_password_alphabet_uppercase += c
+        for c in random_password_alphabet: 
+            if c.islower():
+                random_password_alphabet_lowercase += c
+        for c in random_password_alphabet: 
+            if c.isdigit():
+                random_password_alphabet_digit += c
+        for c in random_password_alphabet: 
+            if not c.isalnum():
+                random_password_alphabet_special += c
+
+        secret_password = ''
+        for i in range(random_password_uppercase_requirement):
+            secret_password += random.choice(random_password_alphabet_uppercase)
+        for i in range(random_password_lowercase_requirement):
+            secret_password += random.choice(random_password_alphabet_lowercase)
+        for i in range(random_password_digit_requirement):
+            secret_password += random.choice(random_password_alphabet_digit)
+        for i in range(random_password_special_requirement):
+            secret_password += random.choice(random_password_alphabet_special)
+        for i in range(random_password_length - random_password_requirements_sum):
+            secret_password += random.choice(random_password_alphabet)
+            
+        secret_password_list = list(secret_password)
+        random.SystemRandom().shuffle(secret_password_list)
+        secret_password = ''.join(secret_password_list)
+        
     elif module.params['secret_password']:
         secret_password = module.params['secret_password']
     else:
-        print('missing required arguments: secret_password')
-        exit()
+        module.fail_json(msg='missing required arguments: secret_password')
 
     # Error checking for parameter dependencies
     match str(module.params['secret_template']).lower():
         case 'windows account':
             if not module.params['secret_machine_name']:
-                print('missing required arguments: secret_machine_name')
-                exit()
+                module.fail_json(msg='missing required arguments: secret_machine_name')
 
     # if the user is working with this module in only check mode we do not
     # want to make any changes to the environment, just return the current
@@ -422,8 +463,7 @@ def run_module():
         module.exit_json(**result)
 
     if str(module.params['secret_template']).lower() not in supported_templates:
-        print(str(module.params['secret_template']) + ' is not a supported template type.')
-        exit()
+        module.fail_json(msg=str(module.params['secret_template']) + ' is not a supported template type.')
 
     # if user specified a domain, append it to username
     if module.params['secret_server_username_domain']:
@@ -445,13 +485,12 @@ def run_module():
         if existing_secret['secretTemplateId'] != get_template_id(secret_server_logon,
                                                                   module.params['secret_template']
                                                                   ):
-            print('Cannot convert from \'{}\' template type to \'{}\' template type'.format(get_template_name(secret_server_logon,
-                                                                                                              existing_secret['secretTemplateId']
-                                                                                                              ),
-                                                                                            module.params['secret_template']
-                                                                                            )
-                  )
-            exit()
+            module.fail_json(msg='Cannot convert from \'{}\' template type to \'{}\' template type'.format(get_template_name(secret_server_logon,
+                                                                                                                        existing_secret['secretTemplateId']
+                                                                                                                        ),
+                                                                                                      module.params['secret_template']
+                                                                                                      )
+                            )
         else:
             match str(module.params['secret_template']).lower():
                 case 'windows account':
@@ -487,16 +526,14 @@ def run_module():
                     else:
                         result['changed'] = True
                 case _:
-                    print('Unsupported password change')
-                    exit()
+                    module.fail_json(msg='Unsupported password change')
     elif existing_secret and not module.params['secret_overwrite']:
         module_result = existing_secret
         result['changed'] = False
     else:
         if module.params['secret_template'] == "Windows Account":
             if not module.params['secret_machine_name']:
-                print("secret_machine_name not provided")
-                exit()
+                module.fail_json(msg="secret_machine_name not provided")
             module_result = create_windows_secret(secret_server_logon,
                                                   module.params['secret_folder'],
                                                   module.params['secret_template'],
@@ -519,7 +556,7 @@ def run_module():
         result['changed'] = True
 
     if not module_result['items']:
-        module.fail_json(msg='Secret could not be created', **result)
+        module.fail_json(msg='Secret could not be created')
 
     for item in module_result['items']:
         if item['fieldName'] == 'Username':
@@ -528,10 +565,13 @@ def run_module():
             secret_password = item['itemValue']
 
     if not secret_username:
-        module.fail_json(msg='Secret does not have a username', **result)
+        module.fail_json(msg='Secret does not have a username')
 
     if not secret_password:
-        module.fail_json(msg='Secret does not have a password', **result)
+        module.fail_json(msg='Secret does not have a password')
+
+    if module.params['sha512_encrypt_password']:
+        secret_password = sha512_crypt.using(rounds=5000).hash(secret_password)
 
     result['secret'] = dict(secret_username=secret_username,
                             secret_password=secret_password)
