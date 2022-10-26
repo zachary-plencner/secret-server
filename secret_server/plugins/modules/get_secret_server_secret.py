@@ -1,5 +1,4 @@
 #!/usr/bin/python
-
 from __future__ import (absolute_import, division, print_function)
 __metaclass__ = type
 
@@ -7,13 +6,13 @@ DOCUMENTATION = r'''
 ---
 module: get_secret_server_secret
 
-short_description: Retreives a secret from Delinea's Secret Server
+short_description: Retreives a secret from Delineas Secret Server
 
 version_added: "1.0.0"
 
 description: |
-    Retreive a secret from Delinea's Secret Server using the Secret Server's API as a backend. Returns a 'secret' variable that
-    contains the secret's username and password.
+    Retreive a secret from Delineas Secret Server using the Secret Servers API as a backend.
+    Returns a secret variable that contains the secrets username and password.
 
 options:
     secret_server_host:
@@ -36,6 +35,10 @@ options:
         description: The name of the secret you want to retreive from Secret Server (must be verbatim/exact match)
         required: true
         type: str
+    sha512_encrypt_password:
+        description: Output for password parameter will be sha512 encrypted for security purposes
+        required: False
+        type: bool
 
 author:
     - Zachary Plencner (@zachary-plencner)
@@ -73,6 +76,7 @@ secret:
 
 from ansible.module_utils.basic import AnsibleModule
 import requests
+from passlib.hash import sha512_crypt
 
 
 class LogOn:
@@ -140,13 +144,13 @@ def run_module():
         secret_server_username_domain=dict(type='str', required=False),
         secret_server_username=dict(type='str', no_log=True, required=True),
         secret_server_password=dict(type='str', no_log=True, required=True),
-        secret_name=dict(type='str', required=True)
+        secret_name=dict(type='str', required=True),
+        sha512_encrypt_password=dict(type='bool', no_log=False, required=False, default=False)
     )
 
     # seed the result dict in the object
     result = dict(
-        changed=False,
-        secret=dict()
+        changed=False
     )
 
     # the AnsibleModule object will be our abstraction working with Ansible
@@ -179,34 +183,17 @@ def run_module():
     module_result = get_secret(secret_server_logon,
                                module.params['secret_name']
                                )
+    if module_result:
+        for item in module_result['items']:
+            module_result[str(item['fieldName'])[0].lower() + str(item['fieldName'])[1:]] = item['itemValue']
 
-    # use whatever logic you need to determine whether or not this module
-    # made any modifications to your target
-    # result['changed'] = True
+        del module_result['items']
 
-    # during the execution of the module, if there is an exception or a
-    # conditional state that effectively causes a failure, run
-    # AnsibleModule.fail_json() to pass in the message and the result
-    # if module.params['name'] == 'fail me':
-    #     module.fail_json(msg='You requested this to fail', **result)
+        # Encrypt the secret_password result if sha512_encrypt_password is True
+        if module.params['sha512_encrypt_password']:
+            module_result['password'] = sha512_crypt.using(rounds=5000).hash(module_result['password'])
 
-    if not module_result:
-        module.fail_json(msg='Secret does not exist. \'secret_name\' must be verbatim.', **result)
-
-    for item in module_result['items']:
-        if item['fieldName'] == 'Username':
-            secret_username = item['itemValue']
-        if item['fieldName'] == 'Password':
-            secret_password = item['itemValue']
-
-    if not secret_username:
-        module.fail_json(msg='Secret does not have a username', **result)
-
-    if not secret_password:
-        module.fail_json(msg='Secret does not have a password', **result)
-
-    result['secret'] = dict(secret_username=secret_username,
-                            secret_password=secret_password)
+        result['secret'] = module_result
 
     # in the event of a successful module execution, you will want to
     # simple AnsibleModule.exit_json(), passing the key/value results
