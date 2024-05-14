@@ -25,11 +25,19 @@ options:
         type: str
     secret_server_username:
         description: The username of the user that will be used to contact the Secret Server API
-        required: true
+        required: false
         type: str
     secret_server_password:
         description: The password of the user that will be used to contact the Secret Server API
-        required: true
+        required: false
+        type: str
+    use_sdk:
+        description: If the module should use the SDK to authenticate with Secret Server
+        required: false
+        type: str
+    sdk_config_directory:
+        description: Directory where the SDK .config files are located
+        required: false
         type: str
     secret_name:
         description: The name of the secret you want to retreive from Secret Server (must be verbatim/exact match)
@@ -62,9 +70,8 @@ EXAMPLES = r'''
 - name: Share a secret named "Administrator Login" with groups named "Office Space 1 Employees" (from the Contoso domain) and a local group named "TSS Admins"
     add_secret_share_group:
       secret_server_host: 'https://example.secretservercloud.com'
-      secret_server_username_domain: "Contoso"
-      secret_server_username: "john.doe"
-      secret_server_password: "password123"
+      use_sdk: yes
+      sdk_config_directory: /etc/secret-server-sdk
       secret_name: "Administrator Login"
       secret_share_groups:
       - name: Office Space 1 Employees
@@ -80,38 +87,44 @@ RETURN = r'''
 
 from ansible.module_utils.basic import AnsibleModule
 import requests
+import subprocess
+import os
 
 valid_roles = ['owner', 'edit', 'view', 'list']
 
 
 class LogOn:
-    def __init__(self, secret_server_host, secret_server_username, secret_server_password):
+    def __init__(self, secret_server_host, secret_server_username, secret_server_password, use_sdk, sdk_config_directory):
         self.secret_server_host = secret_server_host
-        self.secret_server_username = secret_server_username
-        self.secret_server_password = secret_server_password
-
         self.secret_server_logon_uri = secret_server_host + '/oauth2/token'
         self.secret_server_base_url = secret_server_host + '/api/v1'
-        self.secret_server_grant_type = 'password'
 
-        # Create dictionarie with login data
-        self.secret_server_logon_data = {
-                                        'username': secret_server_username,
-                                        'password': secret_server_password,
-                                        'grant_type': self.secret_server_grant_type
-                                    }
+        if not use_sdk:
+            self.secret_server_grant_type = 'password'
+            self.secret_server_username = secret_server_username
+            self.secret_server_password = secret_server_password
 
-        # Login to Secret Server
-        secret_server_r = requests.post(self.secret_server_logon_uri, data=self.secret_server_logon_data)
+            # Create dictionary with login data
+            self.secret_server_logon_data = {
+                                            'username': secret_server_username,
+                                            'password': secret_server_password,
+                                            'grant_type': self.secret_server_grant_type
+                                        }
 
-        if secret_server_r.status_code != 200:
-            print("Login failed")
-            exit()
+            # Login to Secret Server
+            secret_server_r = requests.post(self.secret_server_logon_uri, data=self.secret_server_logon_data)
 
-        self.secret_server_jar = secret_server_r.cookies
+            if secret_server_r.status_code != 200:
+                print("Login failed")
+                exit()
 
-        # Create bearer token variable
-        secret_server_token = secret_server_r.json()['access_token']
+            self.secret_server_jar = secret_server_r.cookies
+
+            # Create bearer token variable
+            secret_server_token = secret_server_r.json()['access_token']
+        else:
+            secret_server_token = (subprocess.check_output(["tss","-cd",sdk_config_directory,"token"],stderr=subprocess.STDOUT, universal_newlines=True)).replace('\n', '')
+            self.secret_server_jar = None
 
         # Create header variable for Secret Server. Includes bearer token for authorization
         self.secret_server_headers = {
@@ -260,8 +273,10 @@ def run_module():
     module_args = dict(
         secret_server_host=dict(type='str', required=True),
         secret_server_username_domain=dict(type='str', required=False),
-        secret_server_username=dict(type='str', no_log=True, required=True),
-        secret_server_password=dict(type='str', no_log=True, required=True),
+        secret_server_username=dict(type='str', no_log=True, required=False),
+        secret_server_password=dict(type='str', no_log=True, required=False),
+        use_sdk=dict(type='bool', no_log=False, required=False, default=False),
+        sdk_config_directory=dict(type='str', required=False),
         secret_name=dict(type='str', required=True),
         secret_share_groups=dict(type='list', required=True)
     )
@@ -279,6 +294,28 @@ def run_module():
         argument_spec=module_args,
         supports_check_mode=True
     )
+
+    if module.params['use_sdk']:
+        try:
+            subprocess.check_output("tss", stderr=subprocess.STDOUT, universal_newlines=True)
+        except subprocess.CalledProcessError as e:
+            print("tss SDK is not available or encountered an error:")
+        except FileNotFoundError:
+            print("tss SDK binary not present or is not included in PATH")
+        if None == module.params['sdk_config_directory']:
+            print("use_sdk=True but sdk_config_directory was not provided")
+            exit()
+        else:
+            if not os.path.exists(module.params['sdk_config_directory'] + "/credentials.config"):
+                print("Could not find SDK config " + module.params['sdk_config_directory'] + "/credentials.config")
+                exit()
+    else:
+        if None == module.params['secret_server_username']:
+            print("No username was provided")
+            exit()
+        if None == module.params['secret_server_password']:
+            print("No password was provided")
+            exit()    
 
     # if the user is working with this module in only check mode we do not
     # want to make any changes to the environment, just return the current
@@ -303,7 +340,9 @@ def run_module():
 
     secret_server_logon = LogOn(module.params['secret_server_host'],
                                 secret_server_username,
-                                module.params['secret_server_password']
+                                module.params['secret_server_password'],
+                                module.params['use_sdk'],
+                                module.params['sdk_config_directory']
                                 )
 
     secret = get_secret(secret_server_logon,
