@@ -83,6 +83,7 @@ secret_field:
 
 from ansible.module_utils.basic import AnsibleModule
 import requests
+import subprocess
 import os
 from passlib.hash import sha512_crypt
 
