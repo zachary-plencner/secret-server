@@ -31,6 +31,14 @@ options:
         description: The password of the user that will be used to contact the Secret Server API
         required: true
         type: str
+    use_sdk:
+        description: If the module should use the SDK to authenticate with Secret Server
+        required: false
+        type: str
+    sdk_config_directory:
+        description: Directory where the SDK .config files are located
+        required: false
+        type: str
     secret_folder:
         description: The name of the folder the secret will be placed in
         required: True
@@ -80,7 +88,7 @@ options:
         required: False
         type: bool
     secret_overwrite:
-        description: Flag to enable overwriting of an existing secret
+        description: Flag to enable overwriting of an existing secret. If true, everytime this module runs the secret password will be changed to the specified password or a new random password if use_random_password is true.
         required: False
         type: bool
 
@@ -104,23 +112,6 @@ EXAMPLES = r'''
         Username: "jdoe"
         Password: "password123"
 
-# Create a 'Password' Secret with the SDK
-- name: Create Secret with the SDK
-    create_windows_secret_server_secret:
-      secret_server_host: 'https://contoso.secretservercloud.com'
-      use_sdk: yes
-      sdk_config_directory: /etc/secret-server-sdk
-      secret_folder: "/My Secrets/Linux Secrets"
-      secret_name: "database-1 secret"
-      secret_template: "Password"
-      secret_items:
-        Username: "root"
-        Password: "Q1am9a!aSl"
-        Resource: "database-1"
-        Notes: "Root login for database-1"
-    sha512_encrypt_password: yes
-    secret_overwrite: True
-
 # Create a 'Active Directory Account" Secret with random password
 - name: Create Secret
     create_windows_secret_server_secret:
@@ -142,6 +133,23 @@ EXAMPLES = r'''
     random_password_lowercase_requirement: 1
     random_password_digit_requirement: 1
     random_password_special_requirement: 1
+    secret_overwrite: True
+
+# Create a 'Password' Secret with the SDK
+- name: Create Secret with the SDK
+    create_windows_secret_server_secret:
+      secret_server_host: 'https://contoso.secretservercloud.com'
+      use_sdk: yes
+      sdk_config_directory: /etc/secret-server-sdk
+      secret_folder: "/My Secrets/Linux Secrets"
+      secret_name: "database-1 secret"
+      secret_template: "Password"
+      secret_items:
+        Username: "root"
+        Password: "Q1am9a!aSl"
+        Resource: "database-1"
+        Notes: "Root login for database-1"
+    sha512_encrypt_password: yes
     secret_overwrite: True
 '''
 

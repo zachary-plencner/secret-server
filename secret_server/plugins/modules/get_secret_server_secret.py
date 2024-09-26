@@ -31,6 +31,14 @@ options:
         description: The password of the user that will be used to contact the Secret Server API
         required: true
         type: str
+    use_sdk:
+        description: If the module should use the SDK to authenticate with Secret Server
+        required: false
+        type: str
+    sdk_config_directory:
+        description: Directory where the SDK .config files are located
+        required: false
+        type: str
     secret_name:
         description: The name of the secret you want to retreive from Secret Server (must be verbatim/exact match)
         required: true
@@ -53,7 +61,16 @@ EXAMPLES = r'''
       secret_server_password: "password123"
       secret_name: "Administrator Login"
 
-# Retrieve a secret with a non-local login with domain name
+# Retrieve a secret with non-local login
+- name: Get a secret named "Administrator Login"
+    get_secret_server_secret:
+      secret_server_host: 'https://example.secretservercloud.com'
+      secret_server_username: "john.doe"
+      secret_server_password: "password123"
+      secret_server_username_domain: "Contoso"
+      secret_name: "Administrator Login"
+
+# Retrieve a secret using the SDK
 - name: Get a secret named "Administrator Login"
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'

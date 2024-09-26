@@ -31,6 +31,14 @@ options:
         description: The password of the user that will be used to contact the Secret Server API
         required: true
         type: str
+    use_sdk:
+        description: If the module should use the SDK to authenticate with Secret Server
+        required: false
+        type: str
+    sdk_config_directory:
+        description: Directory where the SDK .config files are located
+        required: false
+        type: str
     secret_name:
         description: The name of the secret you want to retreive from Secret Server (must be verbatim/exact match)
         required: true
@@ -44,7 +52,7 @@ options:
         required: false
         type: bool
     dest:
-        description: Destination to save to file/attachment
+        description: Destination to save to file/attachment on the remote host
         required: false
         type: str
 
@@ -62,7 +70,7 @@ EXAMPLES = r'''
       secret_name: "Administrator Login"
       secret_field: "Notes"
 
-# Retrieve file from "File" field in secret
+# Retrieve a file from the "File" field in secret
 - name: Get the secret field "File" from a secret named "Administrator Login"
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
@@ -72,6 +80,15 @@ EXAMPLES = r'''
       secret_field: "File"
       is_file: yes
       dest: "./file.txt"
+
+# Retrieve a field using SDK to login
+- name: Get the secret field "Notes" from a secret named "Administrator Login"
+    get_secret_server_secret:
+      secret_server_host: 'https://example.secretservercloud.com'
+      use_sdk: yes
+      sdk_config_directory: /home/ansible/secret-server-sdk
+      secret_name: "Administrator Login"
+      secret_field: "Resource"
 '''
 
 RETURN = r'''
