@@ -20,23 +20,23 @@ options:
         required: true
         type: str
     secret_server_username_domain:
-        description: The domain pertaining to your username. This is prepended to your username
+        description: The domain pertaining to your username. This is prepended to your username (mutually exclusive with SDK authentication)
         required: false
         type: str
     secret_server_username:
-        description: The username of the user that will be used to contact the Secret Server API
+        description: The username of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
         required: false
         type: str
     secret_server_password:
-        description: The password of the user that will be used to contact the Secret Server API
+        description: The password of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
         required: false
         type: str
     use_sdk:
-        description: If the module should use the SDK to authenticate with Secret Server
+        description: If the module should use the SDK to authenticate with Secret Server (mutually exclusive with username/password authentication)
         required: false
         type: str
     sdk_config_directory:
-        description: Directory where the SDK .config files are located
+        description: Directory where the SDK .config files are located (mutually exclusive with username/password authentication)
         required: false
         type: str
     secret_name:
@@ -54,7 +54,7 @@ author:
 
 EXAMPLES = r'''
 # Retrieve a secret with local login
-- name: Share a secret named "Administrator Login" with groups named "Accounting" and "Human Resources"
+- name: Share a secret named "Administrator Login" with groups named "Accounting" permission to view the secret, and "Human Resources" permission to edit the secret
     add_secret_share_group:
       secret_server_host: 'https://example.secretservercloud.com'
       secret_server_username: "john.doe"

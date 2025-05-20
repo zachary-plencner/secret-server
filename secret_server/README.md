@@ -1,6 +1,6 @@
 # Ansible Collection - zachary_plencner.secret_server
 
-This collection contains modules for creating and retreiving secrets from Delinea's Secret Server PAM software.  
+This collection contains modules for creating, retreiving, and managing secrets from Delinea's Secret Server PAM software.  
 
 For information about Secret Server visit https://docs.delinea.com/online-help/secret-server/start.htm
 

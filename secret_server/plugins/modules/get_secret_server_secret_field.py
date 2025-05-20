@@ -12,7 +12,7 @@ version_added: "2.1.3"
 
 description: |
     Retreive a specific field from a secret in Delineas Secret Server using the Secret Servers API as a backend.
-    Returns the target field.
+    Returns the targeted field.
 
 options:
     secret_server_host:
@@ -20,23 +20,23 @@ options:
         required: true
         type: str
     secret_server_username_domain:
-        description: The domain pertaining to your username. This is prepend to your username
+        description: The domain pertaining to your username. This is prepend to your username (mutually exclusive with SDK authentication)
         required: false
         type: str
     secret_server_username:
-        description: The username of the user that will be used to contact the Secret Server API
-        required: true
+        description: The username of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     secret_server_password:
-        description: The password of the user that will be used to contact the Secret Server API
-        required: true
+        description: The password of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     use_sdk:
-        description: If the module should use the SDK to authenticate with Secret Server
+        description: If the module should use the SDK to authenticate with Secret Server (mutually exclusive with username/password authentication)
         required: false
         type: str
     sdk_config_directory:
-        description: Directory where the SDK .config files are located
+        description: Directory where the SDK .config files are located (mutually exclusive with username/password authentication)
         required: false
         type: str
     secret_name:
@@ -71,7 +71,7 @@ EXAMPLES = r'''
       secret_field: "Notes"
 
 # Retrieve a file from the "File" field in secret
-- name: Get the secret field "File" from a secret named "Administrator Login"
+- name: Get the secret field "File" from a secret named "Administrator Login" and save it to the working directory as file.txt, using the SDK
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
       use_sdk: yes
@@ -82,7 +82,7 @@ EXAMPLES = r'''
       dest: "./file.txt"
 
 # Retrieve a field using SDK to login
-- name: Get the secret field "Notes" from a secret named "Administrator Login"
+- name: Get the secret field "Resource" from a secret named "Administrator Login", using the SDK
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
       use_sdk: yes
@@ -93,9 +93,12 @@ EXAMPLES = r'''
 
 RETURN = r'''
 secret_field:
-    description: The username and password of the secret
+    description: The retrieved secret field
     type: str
     returned: always
+    sample: {
+        "example_secret_field": "value_of_targeted_field" 
+    }
 '''
 
 from ansible.module_utils.basic import AnsibleModule

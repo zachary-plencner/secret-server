@@ -6,13 +6,13 @@ DOCUMENTATION = r'''
 ---
 module: get_secret_server_secret
 
-short_description: Retreives a secret from Delineas Secret Server
+short_description: Retreive a secret from Delineas Secret Server
 
 version_added: "1.0.0"
 
 description: |
     Retreive a secret from Delineas Secret Server using the Secret Servers API as a backend.
-    Returns a secret variable that contains the secrets username and password.
+    Returns a secret variable that contains information about the secret and it's fields.
 
 options:
     secret_server_host:
@@ -20,23 +20,23 @@ options:
         required: true
         type: str
     secret_server_username_domain:
-        description: The domain pertaining to your username. This is prepend to your username
+        description: The domain pertaining to your username. This is prepend to your username (mutually exclusive with SDK authentication)
         required: false
         type: str
     secret_server_username:
-        description: The username of the user that will be used to contact the Secret Server API
-        required: true
+        description: The username of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     secret_server_password:
-        description: The password of the user that will be used to contact the Secret Server API
-        required: true
+        description: The password of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     use_sdk:
-        description: If the module should use the SDK to authenticate with Secret Server
+        description: If the module should use the SDK to authenticate with Secret Server (mutually exclusive with username/password authentication)
         required: false
         type: str
     sdk_config_directory:
-        description: Directory where the SDK .config files are located
+        description: Directory where the SDK .config files are located (mutually exclusive with username/password authentication)
         required: false
         type: str
     secret_name:
@@ -54,7 +54,7 @@ author:
 
 EXAMPLES = r'''
 # Retrieve a secret with local login
-- name: Get a secret named "Administrator Login"
+- name: Get a secret named "Administrator Login" using a local Secret Server account
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
       secret_server_username: "john.doe"
@@ -62,7 +62,7 @@ EXAMPLES = r'''
       secret_name: "Administrator Login"
 
 # Retrieve a secret with non-local login
-- name: Get a secret named "Administrator Login"
+- name: Get a secret named "Administrator Login" using a domain account
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
       secret_server_username: "john.doe"
@@ -71,7 +71,7 @@ EXAMPLES = r'''
       secret_name: "Administrator Login"
 
 # Retrieve a secret using the SDK
-- name: Get a secret named "Administrator Login"
+- name: Get a secret named "Administrator Login" using the SDK
     get_secret_server_secret:
       secret_server_host: 'https://example.secretservercloud.com'
       use_sdk: yes
@@ -81,12 +81,17 @@ EXAMPLES = r'''
 
 RETURN = r'''
 secret:
-    description: The username and password of the secret
-    type: str
+    description: The retrieved secret
+    type: dict
     returned: always
     sample: {
-        "secret_password": "password123",
-        "secret_username": "username1"
+        secret: {
+            "password": "password123",
+            "username": "username1",
+            "exmaple_field_1": "exmaple_field_value_1",
+            "exmaple_field_2": "exmaple_field_value_2",
+            "exmaple_field_n": "exmaple_field_value_n",
+        }
     }
 '''
 

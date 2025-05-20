@@ -12,7 +12,7 @@ version_added: "1.0.0"
 
 description: |
     Create a secret in Delineas Secret Server using the Secret Servers API as a backend.
-    Returns a secret variable that contains the secrets username and password.
+    Returns a secret variable that contains information about the secret and it's fields.
 
 options:
     secret_server_host:
@@ -20,23 +20,23 @@ options:
         required: true
         type: str
     secret_server_username_domain:
-        description: The domain pertaining to your username. This is prepend to your username
+        description: The domain pertaining to your username. This is prepend to your username (mutually exclusive with SDK authentication)
         required: false
         type: str
     secret_server_username:
-        description: The username of the user that will be used to contact the Secret Server API
-        required: true
+        description: The username of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     secret_server_password:
-        description: The password of the user that will be used to contact the Secret Server API
-        required: true
+        description: The password of the user that will be used to contact the Secret Server API (mutually exclusive with SDK authentication)
+        required: false
         type: str
     use_sdk:
-        description: If the module should use the SDK to authenticate with Secret Server
+        description: If the module should use the SDK to authenticate with Secret Server (mutually exclusive with username/password authentication)
         required: false
         type: str
     sdk_config_directory:
-        description: Directory where the SDK .config files are located
+        description: Directory where the SDK .config files are located (mutually exclusive with username/password authentication)
         required: false
         type: str
     secret_folder:
@@ -98,7 +98,7 @@ author:
 
 EXAMPLES = r'''
 # Create a 'Windows Account' Secret
-- name: Create a new secret
+- name: Create a new static secret "My Workstation" from the "Windows Account" secret template, using a local Secret Server account
     create_windows_secret_server_secret:
       secret_server_host: 'https://contoso.secretservercloud.com'
       secret_server_username_domain: "contoso"
@@ -113,12 +113,12 @@ EXAMPLES = r'''
         Password: "password123"
 
 # Create a 'Active Directory Account" Secret with random password
-- name: Create Secret
+- name: Create a new randmomly generated secret "jdoe1 AD password" from the "Active Directory Account" template, allowing for regeneration with secret_overwrite on subsequent runs, using the SDK
     create_windows_secret_server_secret:
       secret_server_host: 'https://contoso.secretservercloud.com'
       secret_server_username_domain: "contoso"
-      secret_server_username: "jane.doe"
-      secret_server_password: "password123"
+      use_sdk: yes
+      sdk_config_directory: /home/ansible/secret-server-sdk
       secret_folder: "/My Secrets/Active Directory Secrets/jdoe1"
       secret_name: "jdoe1 AD password"
       secret_template: "Active Directory Account"
@@ -136,7 +136,7 @@ EXAMPLES = r'''
     secret_overwrite: True
 
 # Create a 'Password' Secret with the SDK
-- name: Create Secret with the SDK
+- name: Create secret and sha512_encrypt_password for use with other modules (e.g. Linux system account creation)
     create_windows_secret_server_secret:
       secret_server_host: 'https://contoso.secretservercloud.com'
       use_sdk: yes
@@ -155,16 +155,19 @@ EXAMPLES = r'''
 
 RETURN = r'''
 secret:
-    description: The items contained in the secret
-    type: str
+    description: The retrieved secret
+    type: dict
     returned: always
-    secret: {
-        item1: "itemValue1",
-        item2: "itemValue2",
-        item3: "itemValue3",
-        itemN: "itemValueN"
+    sample: {
+        secret: {
+            "password": "password123",
+            "username": "username1",
+            "exmaple_field_1": "exmaple_field_value_1",
+            "exmaple_field_2": "exmaple_field_value_2",
+            "exmaple_field_n": "exmaple_field_value_n",
+        }
     }
-'''
+'''www
 
 from ansible.module_utils.basic import AnsibleModule
 import requests
